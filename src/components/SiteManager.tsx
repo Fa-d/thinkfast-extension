@@ -104,7 +104,7 @@ export const SiteManager: React.FC = () => {
     chrome.runtime.sendMessage({ type: 'RELOAD_SETTINGS' });
   };
 
-  const defaultSites = StorageService.getDefaultSettings().trackedSites;
+  const defaultSites: any[] = []; // No default sites - all sites are user-added now
 
   return (
     <div className="space-y-6">

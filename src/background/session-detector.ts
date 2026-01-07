@@ -137,6 +137,25 @@ export class SessionDetector {
   }
 
   /**
+   * Check if two URLs belong to the same domain/site
+   * Compares hostnames to allow navigation within the same site
+   */
+  private isSessionUrlMatch(currentUrl: string | undefined, sessionUrl: string): boolean {
+    if (!currentUrl) return false;
+
+    try {
+      const current = new URL(currentUrl);
+      const session = new URL(sessionUrl);
+
+      // Compare hostnames (domains)
+      return current.hostname === session.hostname;
+    } catch (error) {
+      console.error('[SessionDetector] Failed to parse URLs for comparison:', error);
+      return false;
+    }
+  }
+
+  /**
    * Show reminder overlay via content script
    */
   async showReminderOverlay() {
@@ -163,6 +182,15 @@ export class SessionDetector {
       // Check if URL is valid for content script
       if (!this.isValidTabUrl(tab.url)) {
         console.log('[SessionDetector] Tab URL not valid for content script:', tab.url);
+        return;
+      }
+
+      // CRITICAL FIX: Verify active tab URL matches the current session's site
+      // This prevents showing interventions on untracked sites
+      if (!this.isSessionUrlMatch(tab.url, this.currentSession.url)) {
+        console.log('[SessionDetector] Active tab URL does not match session URL, skipping reminder');
+        console.log('[SessionDetector] Session URL:', this.currentSession.url);
+        console.log('[SessionDetector] Active tab URL:', tab.url);
         return;
       }
 
@@ -221,6 +249,15 @@ export class SessionDetector {
       // Check if URL is valid for content script
       if (!this.isValidTabUrl(tab.url)) {
         console.log('[SessionDetector] Tab URL not valid for content script:', tab.url);
+        return;
+      }
+
+      // CRITICAL FIX: Verify active tab URL matches the current session's site
+      // This prevents showing interventions on untracked sites
+      if (!this.isSessionUrlMatch(tab.url, this.currentSession.url)) {
+        console.log('[SessionDetector] Active tab URL does not match session URL, skipping timer');
+        console.log('[SessionDetector] Session URL:', this.currentSession.url);
+        console.log('[SessionDetector] Active tab URL:', tab.url);
         return;
       }
 

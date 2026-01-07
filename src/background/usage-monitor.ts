@@ -25,8 +25,14 @@ export class UsageMonitor {
   }
 
   async loadTrackedSites() {
-    const settings = await StorageService.getSettings();
-    this.trackedSites = settings.trackedSites || [];
+    // Load from Goals (unified source of truth) instead of settings.trackedSites
+    const goals = await StorageService.getGoals();
+    this.trackedSites = goals.map(goal => ({
+      name: goal.siteName,
+      pattern: goal.sitePattern,
+      dailyLimitMinutes: goal.dailyLimitMinutes
+    }));
+    console.log('[UsageMonitor] Loaded tracked sites from Goals:', this.trackedSites.length);
   }
 
   async loadMonitoringState() {
@@ -52,9 +58,21 @@ export class UsageMonitor {
       return;
     }
 
-    // End previous session if different site
+    // End previous session ONLY if different domain (not just different URL)
+    // This prevents ending sessions when navigating within the same site
     if (this.currentUrl && this.currentUrl !== url) {
-      await this.endCurrentSession();
+      const currentDomain = this.extractDomain(this.currentUrl);
+      const newDomain = this.extractDomain(url);
+
+      if (currentDomain !== newDomain) {
+        console.log(`[UsageMonitor] Domain changed from ${currentDomain} to ${newDomain}, ending session`);
+        await this.endCurrentSession();
+      } else {
+        console.log(`[UsageMonitor] Same domain (${currentDomain}), continuing session`);
+        // Update URL but don't end session
+        this.currentUrl = url;
+        return;
+      }
     }
 
     this.currentTabId = tabId;
@@ -64,6 +82,20 @@ export class UsageMonitor {
     const site = this.matchTrackedSite(url);
     if (site) {
       await this.startSession(site, url);
+    }
+  }
+
+  /**
+   * Extract domain from URL for comparison
+   * Returns hostname without protocol
+   */
+  private extractDomain(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname;
+    } catch (error) {
+      console.error('[UsageMonitor] Failed to parse URL:', url);
+      return url; // Fallback to full URL
     }
   }
 

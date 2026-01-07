@@ -26,7 +26,7 @@ export class StorageService {
       frictionLevel: 'auto',
       snoozeEnabled: true,
       snoozeDurationMinutes: 30,
-      trackedSites: this.getDefaultTrackedSites(),
+      trackedSites: [], // No default tracked sites - user must add via Goals
       theme: 'light',
       notificationsEnabled: true,
       morningNotificationTime: '08:00',
@@ -35,16 +35,9 @@ export class StorageService {
   }
 
   static getDefaultTrackedSites() {
-    return [
-      { pattern: '*://*.facebook.com/*', name: 'Facebook', dailyLimitMinutes: 30 },
-      { pattern: '*://*.instagram.com/*', name: 'Instagram', dailyLimitMinutes: 30 },
-      { pattern: '*://*.twitter.com/*', name: 'Twitter/X', dailyLimitMinutes: 30 },
-      { pattern: '*://*.x.com/*', name: 'Twitter/X', dailyLimitMinutes: 30 },
-      { pattern: '*://*.tiktok.com/*', name: 'TikTok', dailyLimitMinutes: 30 },
-      { pattern: '*://*.reddit.com/*', name: 'Reddit', dailyLimitMinutes: 45 },
-      { pattern: '*://*.youtube.com/*', name: 'YouTube', dailyLimitMinutes: 60 },
-      { pattern: '*://*.linkedin.com/*', name: 'LinkedIn', dailyLimitMinutes: 45 }
-    ];
+    // Kept for reference but not used by default
+    // Users can add these via the "Popular Sites" preset in WebsiteManager
+    return [];
   }
 
   // Goals Management (Chrome Storage Local)
