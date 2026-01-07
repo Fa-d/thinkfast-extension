@@ -47,6 +47,7 @@
     {
       "resources": [
         "assets/*",
+        ".vite/manifest.json",
         "auth-callback.html",
         "src/styles/intervention.css"
       ],

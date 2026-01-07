@@ -43,18 +43,31 @@ async function injectInterventionStyles() {
       }
     }
 
-    // Fallback: Try to find CSS files in assets
+    // Fallback: Read Vite manifest to find theme CSS dynamically
     if (cssFiles.length === 0) {
-      // Look for theme CSS file (it has the Tailwind utilities)
-      // For now, load a known file pattern (hash may change on rebuild)
       try {
-        const themeUrl = chrome.runtime.getURL('assets/theme-B64Mk0KX.css');
-        const testResponse = await fetch(themeUrl);
-        if (testResponse.ok) {
-          cssFiles.push('assets/theme-B64Mk0KX.css');
+        const manifestUrl = chrome.runtime.getURL('.vite/manifest.json');
+        const manifestResponse = await fetch(manifestUrl);
+        if (manifestResponse.ok) {
+          const viteManifest = await manifestResponse.json();
+          // Find the theme CSS file from the manifest
+          for (const [key, value] of Object.entries(viteManifest)) {
+            if (key.includes('theme') && key.endsWith('.css')) {
+              const entry = value as { file: string };
+              cssFiles.push(entry.file);
+              break;
+            }
+            // Also check css array in entries
+            if (typeof value === 'object' && value !== null && 'css' in value) {
+              const entry = value as { css?: string[] };
+              if (entry.css && Array.isArray(entry.css)) {
+                cssFiles.push(...entry.css);
+              }
+            }
+          }
         }
-      } catch {
-        console.warn('[ThinkFast] Could not find theme CSS, trying alternate method');
+      } catch (error) {
+        console.warn('[ThinkFast] Could not read Vite manifest:', error);
       }
     }
 

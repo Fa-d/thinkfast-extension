@@ -144,12 +144,12 @@ export const ReminderOverlay: React.FC<Props> = ({ session, context, onResult })
 
   return (
     <div
-      className="fixed inset-0 z-[999999] flex items-center justify-center p-8"
+      className="fixed inset-0 z-[999999] p-8"
       style={{
         background: `linear-gradient(to bottom, ${gradientColors.start}, ${gradientColors.end})`
       }}
     >
-      <div className="w-full max-w-2xl flex flex-col justify-between" style={{ minHeight: '80vh' }}>
+      <div className="h-full w-full max-w-2xl mx-auto flex flex-col justify-between">
         {/* Top: App name */}
         <div className="text-center">
           <h1 className="text-2xl font-medium" style={{ color: 'var(--intervention-text-primary)' }}>
