@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 
 interface DayData {
   date: string; // YYYY-MM-DD
@@ -14,8 +14,9 @@ interface Props {
 /**
  * Progress Timeline Chart
  * Shows daily progress over the past week/month with goal compliance
+ * Optimized with React.memo and useMemo for performance
  */
-export const ProgressTimeline: React.FC<Props> = ({ data }) => {
+export const ProgressTimeline: React.FC<Props> = React.memo(({ data }) => {
   if (data.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -25,21 +26,27 @@ export const ProgressTimeline: React.FC<Props> = ({ data }) => {
     );
   }
 
-  const maxMinutes = Math.max(...data.map(d => Math.max(d.totalMinutes, d.goalMinutes)), 1);
-  const avgUsage = data.reduce((sum, d) => sum + d.totalMinutes, 0) / data.length;
-  const daysOnTrack = data.filter(d => d.onTrack).length;
-  const complianceRate = (daysOnTrack / data.length) * 100;
+  // Memoize statistical calculations
+  const stats = useMemo(() => {
+    const maxMinutes = Math.max(...data.map(d => Math.max(d.totalMinutes, d.goalMinutes)), 1);
+    const avgUsage = data.reduce((sum, d) => sum + d.totalMinutes, 0) / data.length;
+    const daysOnTrack = data.filter(d => d.onTrack).length;
+    const complianceRate = (daysOnTrack / data.length) * 100;
+    return { maxMinutes, avgUsage, daysOnTrack, complianceRate };
+  }, [data]);
 
-  const getDayLabel = (dateStr: string): string => {
+  const { maxMinutes, avgUsage, daysOnTrack, complianceRate } = stats;
+
+  const getDayLabel = useCallback((dateStr: string): string => {
     const date = new Date(dateStr);
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return days[date.getDay()];
-  };
+  }, []);
 
-  const getDateLabel = (dateStr: string): string => {
+  const getDateLabel = useCallback((dateStr: string): string => {
     const date = new Date(dateStr);
     return `${date.getMonth() + 1}/${date.getDate()}`;
-  };
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -147,40 +154,51 @@ export const ProgressTimeline: React.FC<Props> = ({ data }) => {
         </div>
       </div>
 
-      {/* Trend indicator */}
-      {data.length >= 2 && (
-        <div className="text-center text-sm">
-          {(() => {
-            const recentDays = data.slice(-3);
-            const olderDays = data.slice(0, -3);
-            if (olderDays.length === 0) return null;
+      {/* Trend indicator - Memoized for performance */}
+      {data.length >= 2 && (() => {
+        const trendAnalysis = useMemo(() => {
+          const recentDays = data.slice(-3);
+          const olderDays = data.slice(0, -3);
+          if (olderDays.length === 0) return null;
 
-            const recentAvg = recentDays.reduce((sum, d) => sum + d.totalMinutes, 0) / recentDays.length;
-            const olderAvg = olderDays.reduce((sum, d) => sum + d.totalMinutes, 0) / olderDays.length;
-            const change = ((recentAvg - olderAvg) / olderAvg) * 100;
+          const recentAvg = recentDays.reduce((sum, d) => sum + d.totalMinutes, 0) / recentDays.length;
+          const olderAvg = olderDays.reduce((sum, d) => sum + d.totalMinutes, 0) / olderDays.length;
+          const change = ((recentAvg - olderAvg) / olderAvg) * 100;
 
-            if (Math.abs(change) < 5) {
-              return (
-                <span className="text-gray-600 dark:text-gray-400">
-                  📊 Usage is stable
-                </span>
-              );
-            } else if (change < 0) {
-              return (
-                <span className="text-green-600 dark:text-green-400">
-                  📉 Usage decreased by {Math.abs(change).toFixed(0)}% recently
-                </span>
-              );
-            } else {
-              return (
-                <span className="text-orange-600 dark:text-orange-400">
-                  📈 Usage increased by {change.toFixed(0)}% recently
-                </span>
-              );
-            }
-          })()}
-        </div>
-      )}
+          return { change, recentAvg, olderAvg };
+        }, [data]);
+
+        if (!trendAnalysis) return null;
+
+        const { change } = trendAnalysis;
+
+        return (
+          <div className="text-center text-sm">
+            {Math.abs(change) < 5 ? (
+              <span className="text-gray-600 dark:text-gray-400">
+                📊 Usage is stable
+              </span>
+            ) : change < 0 ? (
+              <span className="text-green-600 dark:text-green-400">
+                📉 Usage decreased by {Math.abs(change).toFixed(0)}% recently
+              </span>
+            ) : (
+              <span className="text-orange-600 dark:text-orange-400">
+                📈 Usage increased by {change.toFixed(0)}% recently
+              </span>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Array comparison - only re-render if data array actually changed
+  if (prevProps.data.length !== nextProps.data.length) return false;
+  return prevProps.data.every((item, idx) =>
+    item.date === nextProps.data[idx].date &&
+    item.totalMinutes === nextProps.data[idx].totalMinutes &&
+    item.goalMinutes === nextProps.data[idx].goalMinutes &&
+    item.onTrack === nextProps.data[idx].onTrack
+  );
+});

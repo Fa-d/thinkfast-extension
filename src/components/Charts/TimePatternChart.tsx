@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 
 interface Props {
   data: Record<number, number>; // hour -> minutes
@@ -7,39 +7,49 @@ interface Props {
 /**
  * Time Pattern Chart
  * Shows usage patterns by hour of day as a bar chart
+ * Optimized with React.memo and useMemo for performance
  */
-export const TimePatternChart: React.FC<Props> = ({ data }) => {
-  // Generate all 24 hours with data
-  const hours = Array.from({ length: 24 }, (_, i) => ({
-    hour: i,
-    minutes: data[i] || 0
-  }));
+export const TimePatternChart: React.FC<Props> = React.memo(({ data }) => {
+  // Memoize hours array generation
+  const hours = useMemo(() =>
+    Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      minutes: data[i] || 0
+    })),
+    [data]
+  );
 
-  const maxMinutes = Math.max(...hours.map(h => h.minutes), 1);
+  const maxMinutes = useMemo(() =>
+    Math.max(...hours.map(h => h.minutes), 1),
+    [hours]
+  );
 
-  const getHourLabel = (hour: number): string => {
+  const getHourLabel = useCallback((hour: number): string => {
     if (hour === 0) return '12 AM';
     if (hour < 12) return `${hour} AM`;
     if (hour === 12) return '12 PM';
     return `${hour - 12} PM`;
-  };
+  }, []);
 
-  const getBarColor = (minutes: number): string => {
+  const getBarColor = useCallback((minutes: number): string => {
     const intensity = minutes / maxMinutes;
     if (intensity === 0) return 'bg-gray-100 dark:bg-gray-800';
     if (intensity < 0.3) return 'bg-blue-200 dark:bg-blue-900';
     if (intensity < 0.6) return 'bg-blue-400 dark:bg-blue-700';
     if (intensity < 0.8) return 'bg-purple-400 dark:bg-purple-700';
     return 'bg-purple-600 dark:bg-purple-500';
-  };
+  }, [maxMinutes]);
 
-  const getPeakHours = (): string[] => {
+  const peakHours = useMemo(() => {
     const sorted = [...hours].sort((a, b) => b.minutes - a.minutes);
     const top3 = sorted.slice(0, 3).filter(h => h.minutes > 0);
     return top3.map(h => getHourLabel(h.hour));
-  };
+  }, [hours, getHourLabel]);
 
-  const totalMinutes = hours.reduce((sum, h) => sum + h.minutes, 0);
+  const totalMinutes = useMemo(() =>
+    hours.reduce((sum, h) => sum + h.minutes, 0),
+    [hours]
+  );
 
   if (totalMinutes === 0) {
     return (
@@ -49,8 +59,6 @@ export const TimePatternChart: React.FC<Props> = ({ data }) => {
       </div>
     );
   }
-
-  const peakHours = getPeakHours();
 
   return (
     <div className="space-y-4">
@@ -150,4 +158,7 @@ export const TimePatternChart: React.FC<Props> = ({ data }) => {
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Deep comparison for data object - only re-render if data actually changed
+  return JSON.stringify(prevProps.data) === JSON.stringify(nextProps.data);
+});

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Goal } from '../types/models';
 
 interface Props {
@@ -10,31 +10,63 @@ interface Props {
 /**
  * Goal Card Component - Matching Android GoalCard exactly
  * Compact display with app icon, name, limit, streak, and progress bar
+ * Optimized with React.memo and useMemo for performance
  */
-export const GoalCard: React.FC<Props> = ({ goal, usage, onClick }) => {
-  const percentageUsed = (usage / goal.dailyLimitMinutes) * 100;
-  const remaining = Math.max(0, goal.dailyLimitMinutes - usage);
-  const isOverLimit = usage > goal.dailyLimitMinutes;
+export const GoalCard: React.FC<Props> = React.memo(({ goal, usage, onClick }) => {
+  // Memoize calculations for performance
+  const percentageUsed = useMemo(() =>
+    (usage / goal.dailyLimitMinutes) * 100,
+    [usage, goal.dailyLimitMinutes]
+  );
 
-  // Get progress color based on percentage (matching Android AppColors.Progress)
-  const getProgressColor = () => {
+  const remaining = useMemo(() =>
+    Math.max(0, goal.dailyLimitMinutes - usage),
+    [goal.dailyLimitMinutes, usage]
+  );
+
+  const isOverLimit = useMemo(() =>
+    usage > goal.dailyLimitMinutes,
+    [usage, goal.dailyLimitMinutes]
+  );
+
+  // Memoize progress color calculation
+  const progressColor = useMemo(() => {
     if (percentageUsed < 50) return '#4CAF50'; // Green - on track
     if (percentageUsed < 80) return '#FFA726'; // Orange - approaching limit
     return '#FF5252'; // Red - over limit
-  };
+  }, [percentageUsed]);
 
-  // Get streak badge color (matching Android streak colors)
-  const getStreakColor = () => {
+  // Memoize streak color calculation
+  const streakColor = useMemo(() => {
     const streak = goal.currentStreak || 0;
     if (streak >= 30) return '#9C27B0'; // Platinum
     if (streak >= 14) return '#F44336'; // Gold
     if (streak >= 7) return '#FF5722'; // Silver
     return '#FF9800'; // Bronze
-  };
+  }, [goal.currentStreak]);
 
-  const progressColor = getProgressColor();
-  const streakColor = getStreakColor();
-  const currentStreak = goal.currentStreak || 0;
+  const currentStreak = useMemo(() =>
+    goal.currentStreak || 0,
+    [goal.currentStreak]
+  );
+
+  // Memoize inline style objects
+  const streakBadgeStyle = useMemo(() => ({
+    backgroundColor: `${streakColor}26` // 15% opacity
+  }), [streakColor]);
+
+  const streakTextStyle = useMemo(() => ({
+    color: streakColor
+  }), [streakColor]);
+
+  const progressTrackStyle = useMemo(() => ({
+    backgroundColor: `${progressColor}33`
+  }), [progressColor]);
+
+  const progressBarStyle = useMemo(() => ({
+    width: `${Math.min(percentageUsed, 100)}%`,
+    backgroundColor: progressColor
+  }), [percentageUsed, progressColor]);
 
   return (
     <div
@@ -67,14 +99,12 @@ export const GoalCard: React.FC<Props> = ({ goal, usage, onClick }) => {
         {currentStreak > 0 && (
           <div
             className="flex items-center gap-1 px-2 py-1 rounded-lg"
-            style={{
-              backgroundColor: `${streakColor}26` // 15% opacity
-            }}
+            style={streakBadgeStyle}
           >
             <span className="text-sm">🔥</span>
             <span
               className="text-sm font-bold"
-              style={{ color: streakColor }}
+              style={streakTextStyle}
             >
               {currentStreak}
             </span>
@@ -95,15 +125,20 @@ export const GoalCard: React.FC<Props> = ({ goal, usage, onClick }) => {
       </div>
 
       {/* Progress bar - 8px height matching Android */}
-      <div className="w-full h-2 rounded-lg overflow-hidden" style={{ backgroundColor: `${progressColor}33` }}>
+      <div className="w-full h-2 rounded-lg overflow-hidden" style={progressTrackStyle}>
         <div
           className="h-full rounded-lg transition-all duration-500"
-          style={{
-            width: `${Math.min(percentageUsed, 100)}%`,
-            backgroundColor: progressColor
-          }}
+          style={progressBarStyle}
         />
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if these specific props change
+  return (
+    prevProps.goal.id === nextProps.goal.id &&
+    prevProps.goal.dailyLimitMinutes === nextProps.goal.dailyLimitMinutes &&
+    prevProps.goal.currentStreak === nextProps.goal.currentStreak &&
+    prevProps.usage === nextProps.usage
+  );
+});

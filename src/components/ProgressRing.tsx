@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 interface Props {
   percentage: number;
@@ -11,26 +11,28 @@ interface Props {
 /**
  * Progress Ring Component
  * Circular progress indicator matching Android app design
+ * Optimized with React.memo and useMemo for performance
  */
-export const ProgressRing: React.FC<Props> = ({
+export const ProgressRing: React.FC<Props> = React.memo(({
   percentage,
   size = 200,
   strokeWidth = 20,
   label,
   showPercentage = true
 }) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (Math.min(percentage, 100) / 100) * circumference;
+  const radius = useMemo(() => (size - strokeWidth) / 2, [size, strokeWidth]);
+  const circumference = useMemo(() => radius * 2 * Math.PI, [radius]);
+  const offset = useMemo(() =>
+    circumference - (Math.min(percentage, 100) / 100) * circumference,
+    [circumference, percentage]
+  );
 
-  // Color based on percentage
-  const getColor = () => {
+  // Memoize color calculation
+  const color = useMemo(() => {
     if (percentage < 50) return '#4CAF50'; // Green - on track
     if (percentage < 90) return '#FFA726'; // Orange - approaching
     return '#FF5252'; // Red - over limit
-  };
-
-  const color = getColor();
+  }, [percentage]);
 
   return (
     <div className="flex flex-col items-center">
@@ -76,27 +78,33 @@ export const ProgressRing: React.FC<Props> = ({
       </div>
     </div>
   );
-};
+}, (prev, next) =>
+  prev.percentage === next.percentage &&
+  prev.size === next.size &&
+  prev.label === next.label
+);
 
 /**
  * Compact Progress Ring (smaller size for cards)
+ * Optimized with React.memo and useMemo for performance
  */
-export const CompactProgressRing: React.FC<Props> = ({
+export const CompactProgressRing: React.FC<Props> = React.memo(({
   percentage,
   size = 80,
   strokeWidth = 8
 }) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (Math.min(percentage, 100) / 100) * circumference;
+  const radius = useMemo(() => (size - strokeWidth) / 2, [size, strokeWidth]);
+  const circumference = useMemo(() => radius * 2 * Math.PI, [radius]);
+  const offset = useMemo(() =>
+    circumference - (Math.min(percentage, 100) / 100) * circumference,
+    [circumference, percentage]
+  );
 
-  const getColor = () => {
+  const color = useMemo(() => {
     if (percentage < 50) return '#4CAF50';
     if (percentage < 90) return '#FFA726';
     return '#FF5252';
-  };
-
-  const color = getColor();
+  }, [percentage]);
 
   return (
     <div className="relative inline-flex items-center justify-center">
@@ -128,4 +136,7 @@ export const CompactProgressRing: React.FC<Props> = ({
       </div>
     </div>
   );
-};
+}, (prev, next) =>
+  prev.percentage === next.percentage &&
+  prev.size === next.size
+);

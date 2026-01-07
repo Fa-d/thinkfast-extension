@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 interface Props {
   data: Record<string, number>; // siteName -> minutes
@@ -7,10 +7,18 @@ interface Props {
 /**
  * App/Site Breakdown Chart
  * Shows time spent on each tracked site as a horizontal bar chart
+ * Optimized with React.memo and useMemo for performance
  */
-export const AppBreakdownChart: React.FC<Props> = ({ data }) => {
-  const entries = Object.entries(data).sort(([, a], [, b]) => b - a);
-  const total = entries.reduce((sum, [, minutes]) => sum + minutes, 0);
+export const AppBreakdownChart: React.FC<Props> = React.memo(({ data }) => {
+  const entries = useMemo(() =>
+    Object.entries(data).sort(([, a], [, b]) => b - a),
+    [data]
+  );
+
+  const total = useMemo(() =>
+    entries.reduce((sum, [, minutes]) => sum + minutes, 0),
+    [entries]
+  );
 
   if (entries.length === 0) {
     return (
@@ -65,4 +73,10 @@ export const AppBreakdownChart: React.FC<Props> = ({ data }) => {
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Deep comparison for data object - only re-render if data actually changed
+  const prevKeys = Object.keys(prevProps.data).sort();
+  const nextKeys = Object.keys(nextProps.data).sort();
+  if (prevKeys.length !== nextKeys.length) return false;
+  return prevKeys.every(key => prevProps.data[key] === nextProps.data[key]);
+});

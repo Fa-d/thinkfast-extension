@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { SupabaseService } from '../lib/supabase';
 import { StorageService } from '../lib/storage';
 
 /**
  * Account Manager Component
  * Handles user authentication and cloud sync
+ * Optimized with useCallback for performance
  */
 export const AccountManager: React.FC = () => {
   const [user, setUser] = useState<any>(null);
@@ -35,7 +36,7 @@ export const AccountManager: React.FC = () => {
     setLastSync(timestamp);
   };
 
-  const handleSignIn = async () => {
+  const handleSignIn = useCallback(async () => {
     setLoading(true);
     setError('');
     setSuccess('');
@@ -69,9 +70,9 @@ export const AccountManager: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleSyncAfterSignIn = async () => {
+  const handleSyncAfterSignIn = useCallback(async () => {
     setSyncing(true);
     setError('');
     setSuccess('');
@@ -99,9 +100,9 @@ export const AccountManager: React.FC = () => {
     } finally {
       setSyncing(false);
     }
-  };
+  }, [user]);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     setLoading(true);
     setError('');
     setSuccess('');
@@ -115,9 +116,9 @@ export const AccountManager: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     if (!user) {
       setError('Please sign in to sync');
       return;
@@ -150,9 +151,9 @@ export const AccountManager: React.FC = () => {
     } finally {
       setSyncing(false);
     }
-  };
+  }, [user]);
 
-  const handlePullFromCloud = async () => {
+  const handlePullFromCloud = useCallback(async () => {
     if (!user) {
       setError('Please sign in to pull data');
       return;
@@ -202,13 +203,13 @@ export const AccountManager: React.FC = () => {
     } finally {
       setSyncing(false);
     }
-  };
+  }, [user]);
 
-  const formatDate = (timestamp: string | null) => {
+  const formatDate = useCallback((timestamp: string | null) => {
     if (!timestamp) return 'Never';
     const date = new Date(timestamp);
     return date.toLocaleString();
-  };
+  }, []);
 
   if (loading) {
     return (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { StorageService } from '../lib/storage';
 import type { Goal } from '../types/models';
 import { AnalyticsService } from '../lib/analytics';
@@ -49,20 +49,34 @@ export const WebsiteManager: React.FC<Props> = ({ show, onClose, onSaved }) => {
   const [customUrl, setCustomUrl] = useState('');
   const [customLimit, setCustomLimit] = useState(30);
 
+  // Track current slider values (controlled component pattern)
+  const [sliderValues, setSliderValues] = useState<Record<string, number>>({});
+
   useEffect(() => {
     if (show) {
       loadGoals();
     }
   }, [show]);
 
-  const loadGoals = async () => {
+  // Initialize slider values when goals load
+  useEffect(() => {
+    if (goals.length > 0) {
+      const initialValues: Record<string, number> = {};
+      goals.forEach(goal => {
+        initialValues[goal.id] = goal.dailyLimitMinutes;
+      });
+      setSliderValues(initialValues);
+    }
+  }, [goals]);
+
+  const loadGoals = useCallback(async () => {
     setLoading(true);
     const allGoals = await StorageService.getGoals();
     setGoals(allGoals);
     setLoading(false);
-  };
+  }, []);
 
-  const handleAddPresetWebsites = async () => {
+  const handleAddPresetWebsites = useCallback(async () => {
     const sitesToAdd = PRESET_WEBSITES.filter(site => selectedPresets.has(site.name));
 
     for (const site of sitesToAdd) {
@@ -86,9 +100,9 @@ export const WebsiteManager: React.FC<Props> = ({ show, onClose, onSaved }) => {
     setView('list');
     await loadGoals();
     onSaved?.();
-  };
+  }, [selectedPresets, loadGoals, onSaved]);
 
-  const handleAddCustomWebsite = async () => {
+  const handleAddCustomWebsite = useCallback(async () => {
     if (!customName.trim() || !customUrl.trim()) {
       alert('Please enter both website name and URL');
       return;
@@ -129,9 +143,9 @@ export const WebsiteManager: React.FC<Props> = ({ show, onClose, onSaved }) => {
     setView('list');
     await loadGoals();
     onSaved?.();
-  };
+  }, [customName, customUrl, customLimit, loadGoals, onSaved]);
 
-  const handleDeleteGoal = async (goalId: string) => {
+  const handleDeleteGoal = useCallback(async (goalId: string) => {
     if (window.confirm('Remove this website from tracking?')) {
       const goal = goals.find(g => g.id === goalId);
       await StorageService.deleteGoal(goalId);
@@ -141,34 +155,49 @@ export const WebsiteManager: React.FC<Props> = ({ show, onClose, onSaved }) => {
       await loadGoals();
       onSaved?.();
     }
-  };
+  }, [goals, loadGoals, onSaved]);
 
-  const handleUpdateLimit = async (goalId: string, newLimit: number) => {
+  /**
+   * Handle slider change (saves to storage when drag ends)
+   */
+  const handleSliderChange = useCallback(async (goalId: string, newLimit: number) => {
     const goal = goals.find(g => g.id === goalId);
-    if (goal) {
+    if (goal && goal.dailyLimitMinutes !== newLimit) {
       const updated = { ...goal, dailyLimitMinutes: newLimit, updatedAt: new Date().toISOString() };
       await StorageService.saveGoal(updated);
       AnalyticsService.trackGoalUpdated(goal.siteName, goal.dailyLimitMinutes, newLimit);
-      await loadGoals();
+
+      // Update goals state
+      setGoals(prevGoals =>
+        prevGoals.map(g => g.id === goalId ? updated : g)
+      );
+
       onSaved?.();
     }
-  };
+  }, [goals, onSaved]);
 
-  const togglePreset = (name: string) => {
-    const newSet = new Set(selectedPresets);
-    if (newSet.has(name)) {
-      newSet.delete(name);
-    } else {
-      newSet.add(name);
-    }
-    setSelectedPresets(newSet);
-  };
+  // Memoize filtered presets for performance
+  const availablePresets = useMemo(() =>
+    PRESET_WEBSITES.filter(
+      preset => !goals.some(goal => goal.sitePattern === preset.pattern)
+    ),
+    [goals]
+  );
+
+  // Optimize Set operations with functional updates
+  const togglePreset = useCallback((name: string) => {
+    setSelectedPresets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(name)) {
+        newSet.delete(name);
+      } else {
+        newSet.add(name);
+      }
+      return newSet;
+    });
+  }, []);
 
   if (!show) return null;
-
-  const availablePresets = PRESET_WEBSITES.filter(
-    preset => !goals.some(goal => goal.sitePattern === preset.pattern)
-  );
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -270,28 +299,54 @@ export const WebsiteManager: React.FC<Props> = ({ show, onClose, onSaved }) => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Daily Limit: {goal.dailyLimitMinutes} minutes
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                          Daily Limit: {sliderValues[goal.id] ?? goal.dailyLimitMinutes} minutes
                         </label>
-                        <div className="relative">
-                          <input
-                            type="range"
-                            min="5"
-                            max="180"
-                            step="5"
-                            value={goal.dailyLimitMinutes}
-                            onChange={(e) => handleUpdateLimit(goal.id, parseInt(e.target.value))}
-                            onInput={(e) => handleUpdateLimit(goal.id, parseInt((e.target as HTMLInputElement).value))}
-                            className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-grab active:cursor-grabbing accent-blue-600"
-                            style={{
-                              WebkitAppearance: 'none',
-                              background: `linear-gradient(to right, #2563eb 0%, #2563eb ${((goal.dailyLimitMinutes - 5) / 175) * 100}%, #e5e7eb ${((goal.dailyLimitMinutes - 5) / 175) * 100}%, #e5e7eb 100%)`
-                            }}
-                          />
+
+                        {/* Click-based time selection */}
+                        <div className="grid grid-cols-4 gap-2 mb-3">
+                          {[15, 30, 45, 60, 90, 120, 150, 180].map(minutes => (
+                            <button
+                              key={minutes}
+                              onClick={() => {
+                                setSliderValues(prev => ({ ...prev, [goal.id]: minutes }));
+                                handleSliderChange(goal.id, minutes);
+                              }}
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                (sliderValues[goal.id] ?? goal.dailyLimitMinutes) === minutes
+                                  ? 'bg-blue-600 text-white shadow-md'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                              }`}
+                            >
+                              {minutes}m
+                            </button>
+                          ))}
                         </div>
-                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          <span>5 min</span>
-                          <span>180 min</span>
+
+                        {/* Fine-tune with +/- buttons */}
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            onClick={() => {
+                              const currentValue = sliderValues[goal.id] ?? goal.dailyLimitMinutes;
+                              const newValue = Math.max(5, currentValue - 5);
+                              setSliderValues(prev => ({ ...prev, [goal.id]: newValue }));
+                              handleSliderChange(goal.id, newValue);
+                            }}
+                            className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                          >
+                            -5 min
+                          </button>
+                          <button
+                            onClick={() => {
+                              const currentValue = sliderValues[goal.id] ?? goal.dailyLimitMinutes;
+                              const newValue = Math.min(180, currentValue + 5);
+                              setSliderValues(prev => ({ ...prev, [goal.id]: newValue }));
+                              handleSliderChange(goal.id, newValue);
+                            }}
+                            className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                          >
+                            +5 min
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -424,11 +479,10 @@ export const WebsiteManager: React.FC<Props> = ({ show, onClose, onSaved }) => {
                     max="180"
                     step="5"
                     value={customLimit}
-                    onChange={(e) => setCustomLimit(parseInt(e.target.value))}
-                    onInput={(e) => setCustomLimit(parseInt((e.target as HTMLInputElement).value))}
-                    className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-grab active:cursor-grabbing accent-blue-600"
+                    onInput={(e) => setCustomLimit(parseInt(e.currentTarget.value))}
+                    onChange={(e) => setCustomLimit(parseInt(e.currentTarget.value))}
+                    className="w-full focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                     style={{
-                      WebkitAppearance: 'none',
                       background: `linear-gradient(to right, #2563eb 0%, #2563eb ${((customLimit - 5) / 175) * 100}%, #e5e7eb ${((customLimit - 5) / 175) * 100}%, #e5e7eb 100%)`
                     }}
                   />

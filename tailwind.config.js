@@ -73,5 +73,10 @@ export default {
       }
     }
   },
-  plugins: []
+  plugins: [],
+  // Disable preflight to prevent global base styles from affecting host pages
+  // Base styles are manually scoped in intervention.css
+  corePlugins: {
+    preflight: false,
+  },
 }

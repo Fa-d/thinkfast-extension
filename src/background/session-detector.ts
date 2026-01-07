@@ -40,13 +40,18 @@ export class SessionDetector {
   }
 
   /**
-   * Update current session (called periodically)
+   * Update current session (called periodically every minute)
+   * currentDuration is the TOTAL time since session start (not incremental)
    */
   async updateSession(currentDuration: number) {
     if (!this.currentSession) return;
 
+    // Update total duration - this is the TOTAL time since session start
     this.currentSession.totalDuration = currentDuration;
     this.currentSession.lastActiveTime = Date.now();
+
+    const durationMinutes = (currentDuration / 60000).toFixed(2);
+    console.log(`[SessionDetector] Session update: ${this.currentSession.siteName} - ${durationMinutes} minutes total`);
 
     // Check if timer alert should fire
     const settings = await StorageService.getSettings();
@@ -57,6 +62,7 @@ export class SessionDetector {
       timeSinceTimerStart >= timerDurationMs &&
       Date.now() - this.currentSession.lastTimerAlertTime > timerDurationMs
     ) {
+      console.log('[SessionDetector] Timer threshold reached, showing overlay');
       await this.showTimerOverlay();
       this.currentSession.lastTimerAlertTime = Date.now();
     }
@@ -73,7 +79,13 @@ export class SessionDetector {
 
     console.log('[SessionDetector] Ending session:', this.currentSession.siteName);
 
+    // CRITICAL: Use the finalDuration passed from UsageMonitor which is calculated
+    // at the exact moment of session end (Date.now() - sessionStartTime)
+    // This ensures accurate time tracking even if there's a delay between
+    // the last updateSession() call and endSession()
     this.currentSession.totalDuration = finalDuration;
+
+    console.log('[SessionDetector] Session duration:', finalDuration, 'ms (', (finalDuration / 60000).toFixed(2), 'minutes)');
 
     // Save final session
     await StorageService.saveCompletedSession(this.currentSession);
@@ -161,6 +173,13 @@ export class SessionDetector {
         await this.waitForTabLoad(tab.id);
       }
 
+      // Wait for content script to be ready
+      const isReady = await this.waitForContentScript(tab.id);
+      if (!isReady) {
+        console.warn('[SessionDetector] Content script not ready, cannot show reminder');
+        return;
+      }
+
       console.log('[SessionDetector] Sending reminder intervention to tab', tab.id);
       await chrome.tabs.sendMessage(tab.id, {
         type: 'SHOW_INTERVENTION',
@@ -211,6 +230,13 @@ export class SessionDetector {
         await this.waitForTabLoad(tab.id);
       }
 
+      // Wait for content script to be ready
+      const isReady = await this.waitForContentScript(tab.id);
+      if (!isReady) {
+        console.warn('[SessionDetector] Content script not ready, cannot show timer');
+        return;
+      }
+
       console.log('[SessionDetector] Sending timer intervention to tab', tab.id);
       await chrome.tabs.sendMessage(tab.id, {
         type: 'SHOW_INTERVENTION',
@@ -223,6 +249,30 @@ export class SessionDetector {
     } catch (error) {
       console.error('[SessionDetector] Error showing timer:', error);
     }
+  }
+
+  /**
+   * Wait for content script to be ready by pinging it
+   * This prevents "Receiving end does not exist" errors
+   */
+  private async waitForContentScript(tabId: number, maxRetries: number = 10): Promise<boolean> {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        // Try to ping the content script
+        const response = await chrome.tabs.sendMessage(tabId, { type: 'PING' });
+        if (response?.ready) {
+          console.log('[SessionDetector] Content script ready on attempt', i + 1);
+          return true;
+        }
+      } catch (error) {
+        // Content script not ready yet, wait and retry
+        console.log(`[SessionDetector] Content script not ready, attempt ${i + 1}/${maxRetries}`);
+        await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms between retries
+      }
+    }
+
+    console.warn('[SessionDetector] Content script never became ready after', maxRetries, 'attempts');
+    return false;
   }
 
   /**

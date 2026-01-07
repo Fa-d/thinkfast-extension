@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { StorageService } from '../lib/storage';
 import type { DailyStats, Goal } from '../types/models';
 import { GoalCard } from '../components/GoalCard';
@@ -16,31 +16,12 @@ export const Popup: React.FC = () => {
   const [showWebsiteManager, setShowWebsiteManager] = useState(false);
   const [monitoringEnabled, setMonitoringEnabled] = useState(true);
 
-  useEffect(() => {
-    loadData();
-    loadMonitoringState();
-    // Auto-refresh every 30 seconds like Android
-    const interval = setInterval(() => loadData(true), 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadMonitoringState = async () => {
+  const loadMonitoringState = useCallback(async () => {
     const result = await chrome.storage.local.get('monitoringEnabled');
     setMonitoringEnabled(result.monitoringEnabled !== false); // Default to true
-  };
+  }, []);
 
-  const toggleMonitoring = async () => {
-    const newState = !monitoringEnabled;
-    setMonitoringEnabled(newState);
-    await chrome.storage.local.set({ monitoringEnabled: newState });
-
-    // Send message to background script to enable/disable tracking
-    chrome.runtime.sendMessage({
-      type: newState ? 'START_MONITORING' : 'STOP_MONITORING'
-    });
-  };
-
-  const loadData = async (isRefresh = false) => {
+  const loadData = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     else setRefreshing(true);
 
@@ -58,25 +39,56 @@ export const Popup: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
-  const totalGoal = goals.reduce((sum, g) => sum + g.dailyLimitMinutes, 0) || 60;
-  const totalUsage = stats?.totalMinutes || 0;
-  const progressPercent = (totalUsage / totalGoal) * 100;
+  const toggleMonitoring = useCallback(async () => {
+    const newState = !monitoringEnabled;
+    setMonitoringEnabled(newState);
+    await chrome.storage.local.set({ monitoringEnabled: newState });
 
-  const getGreeting = (): string => {
+    // Send message to background script to enable/disable tracking
+    chrome.runtime.sendMessage({
+      type: newState ? 'START_MONITORING' : 'STOP_MONITORING'
+    });
+  }, [monitoringEnabled]);
+
+  useEffect(() => {
+    loadData();
+    loadMonitoringState();
+    // Auto-refresh every 30 seconds like Android
+    const interval = setInterval(() => loadData(true), 30000);
+    return () => clearInterval(interval);
+  }, [loadData, loadMonitoringState]);
+
+  // Memoize calculated values for performance
+  const { totalUsage, progressPercent } = useMemo(() => {
+    const goal = goals.reduce((sum, g) => sum + g.dailyLimitMinutes, 0) || 60;
+    const usage = stats?.totalMinutes || 0;
+    return {
+      totalUsage: usage,
+      progressPercent: (usage / goal) * 100
+    };
+  }, [goals, stats]);
+
+  const getGreeting = useCallback((): string => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
     if (hour < 21) return 'Good evening';
     return 'Good night';
-  };
+  }, []);
 
-  const getProgressColor = (): string => {
+  const getProgressColor = useCallback((): string => {
     if (progressPercent < 50) return '#4CAF50'; // Green
     if (progressPercent < 90) return '#FFA726'; // Orange
     return '#FF5252'; // Red
-  };
+  }, [progressPercent]);
+
+  // Memoized event handlers
+  const handleRefresh = useCallback(() => loadData(true), [loadData]);
+  const handleShowWebsiteManager = useCallback(() => setShowWebsiteManager(true), []);
+  const handleCloseWebsiteManager = useCallback(() => setShowWebsiteManager(false), []);
+  const handleWebsiteManagerSaved = useCallback(() => loadData(), [loadData]);
 
   if (loading) {
     return (
@@ -98,7 +110,7 @@ export const Popup: React.FC = () => {
             ThinkFast
           </h1>
           <button
-            onClick={() => loadData(true)}
+            onClick={handleRefresh}
             disabled={refreshing}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
           >
@@ -140,14 +152,14 @@ export const Popup: React.FC = () => {
               </h3>
               {goals.length === 0 ? (
                 <button
-                  onClick={() => setShowWebsiteManager(true)}
+                  onClick={handleShowWebsiteManager}
                   className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   Add Apps
                 </button>
               ) : (
                 <button
-                  onClick={() => setShowWebsiteManager(true)}
+                  onClick={handleShowWebsiteManager}
                   className="px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-400 border-2 border-blue-600 dark:border-blue-400 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                 >
                   Manage
@@ -166,7 +178,7 @@ export const Popup: React.FC = () => {
                   Start tracking apps to set goals and monitor your usage
                 </p>
                 <button
-                  onClick={() => setShowWebsiteManager(true)}
+                  onClick={handleShowWebsiteManager}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
                 >
                   Add Apps to Track
@@ -323,7 +335,7 @@ export const Popup: React.FC = () => {
                     key={goal.id}
                     goal={goal}
                     usage={stats?.siteBreakdown?.[goal.siteName] || 0}
-                    onClick={() => setShowWebsiteManager(true)}
+                    onClick={handleShowWebsiteManager}
                   />
                 ))}
               </div>
@@ -337,8 +349,8 @@ export const Popup: React.FC = () => {
       {/* Website Manager Modal */}
       <WebsiteManager
         show={showWebsiteManager}
-        onClose={() => setShowWebsiteManager(false)}
-        onSaved={() => loadData()}
+        onClose={handleCloseWebsiteManager}
+        onSaved={handleWebsiteManagerSaved}
       />
     </div>
   );

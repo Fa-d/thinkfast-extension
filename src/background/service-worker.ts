@@ -152,13 +152,25 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 // Detect when user is idle (away from computer)
 chrome.idle.setDetectionInterval(60); // Check every 60 seconds
 
-chrome.idle.onStateChanged.addListener((state) => {
+chrome.idle.onStateChanged.addListener(async (state) => {
   console.log('[ServiceWorker] Idle state changed:', state);
 
   if (state === 'idle' || state === 'locked') {
     usageMonitor.onUserIdle();
   } else if (state === 'active') {
     usageMonitor.onUserActive();
+
+    // Restart tracking current tab when user becomes active
+    // This ensures we don't miss time if user was on a tracked site
+    try {
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (activeTab && activeTab.url && activeTab.id && !activeTab.url.startsWith('chrome://')) {
+        console.log('[ServiceWorker] Reactivating tracking after idle:', activeTab.url);
+        await usageMonitor.onTabActivated(activeTab.url, activeTab.id);
+      }
+    } catch (error) {
+      console.error('[ServiceWorker] Error reactivating tab after idle:', error);
+    }
   }
 });
 

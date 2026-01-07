@@ -1,0 +1,16 @@
+/**
+ * Intervention Overlay Styles
+ * ALL selectors will be automatically scoped to #thinkfast-overlay-root
+ * by the PostCSS plugin to prevent affecting host pages
+ */
+
+@import "tailwindcss";
+
+/* Intervention colors - these will be scoped by PostCSS plugin */
+:root {
+  --intervention-text-primary: #F5F5F5;
+  --intervention-text-secondary: #B0BEC5;
+  --intervention-go-back: #66BB6A;
+  --intervention-proceed: #BDBDBD;
+}
+

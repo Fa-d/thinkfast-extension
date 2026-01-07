@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { StorageService } from '../lib/storage';
 import type { DailyStats, Goal } from '../types/models';
 import { AppBreakdownChart } from '../components/Charts/AppBreakdownChart';
@@ -17,11 +17,7 @@ export const Stats: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [timeRange]);
-
-  const loadData = async (isRefresh = false) => {
+  const loadData = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     else setRefreshing(true);
 
@@ -53,55 +49,80 @@ export const Stats: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [timeRange]);
 
-  // Calculate aggregated stats
-  const totalMinutes = stats.reduce((sum, s) => sum + s.totalMinutes, 0);
-  const totalSessions = stats.reduce((sum, s) => sum + s.sessionCount, 0);
-  const totalInterventions = stats.reduce((sum, s) => sum + s.interventionsShown, 0);
-  const totalGoBack = stats.reduce((sum, s) => sum + s.goBackCount, 0);
-  const currentStreak = stats[stats.length - 1]?.currentStreak || 0;
-  const longestStreak = Math.max(...stats.map(s => s.longestStreak || 0), 0);
-  const successRate = totalInterventions > 0 ? Math.round((totalGoBack / totalInterventions) * 100) : 0;
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  // Get site breakdown
-  const siteBreakdown: Record<string, number> = {};
-  stats.forEach(dayStat => {
-    Object.entries(dayStat.siteBreakdown).forEach(([site, minutes]) => {
-      siteBreakdown[site] = (siteBreakdown[site] || 0) + minutes;
-    });
-  });
+  // Calculate aggregated stats - Memoized for performance
+  const aggregatedStats = useMemo(() => {
+    const totalMinutes = stats.reduce((sum, s) => sum + s.totalMinutes, 0);
+    const totalSessions = stats.reduce((sum, s) => sum + s.sessionCount, 0);
+    const totalInterventions = stats.reduce((sum, s) => sum + s.interventionsShown, 0);
+    const totalGoBack = stats.reduce((sum, s) => sum + s.goBackCount, 0);
+    const currentStreak = stats[stats.length - 1]?.currentStreak || 0;
+    const longestStreak = Math.max(...stats.map(s => s.longestStreak || 0), 0);
+    const successRate = totalInterventions > 0 ? Math.round((totalGoBack / totalInterventions) * 100) : 0;
 
-  // Get hourly pattern
-  const hourlyPattern: Record<number, number> = {};
-  stats.forEach(dayStat => {
-    // Simulate hourly distribution
-    const totalDay = dayStat.totalMinutes;
-    for (let hour = 0; hour < 24; hour++) {
-      if (!hourlyPattern[hour]) hourlyPattern[hour] = 0;
-      // Distribute usage across hours (simplified)
-      if (hour >= 9 && hour <= 22) {
-        hourlyPattern[hour] += totalDay / 14;
-      }
-    }
-  });
-
-  // Goal compliance timeline
-  const timelineData = stats.slice(-7).map(dayStat => {
-    const totalGoal = goals.reduce((sum, g) => sum + g.dailyLimitMinutes, 0) || 60;
     return {
+      totalMinutes,
+      totalSessions,
+      totalInterventions,
+      totalGoBack,
+      currentStreak,
+      longestStreak,
+      successRate
+    };
+  }, [stats]);
+
+  const { totalMinutes, totalSessions, totalInterventions, totalGoBack, currentStreak, longestStreak, successRate } = aggregatedStats;
+
+  // Get site breakdown - Memoized for performance
+  const siteBreakdown = useMemo(() => {
+    const breakdown: Record<string, number> = {};
+    stats.forEach(dayStat => {
+      Object.entries(dayStat.siteBreakdown).forEach(([site, minutes]) => {
+        breakdown[site] = (breakdown[site] || 0) + minutes;
+      });
+    });
+    return breakdown;
+  }, [stats]);
+
+  // Get hourly pattern - Memoized for performance
+  const hourlyPattern = useMemo(() => {
+    const pattern: Record<number, number> = {};
+    stats.forEach(dayStat => {
+      // Simulate hourly distribution
+      const totalDay = dayStat.totalMinutes;
+      for (let hour = 0; hour < 24; hour++) {
+        if (!pattern[hour]) pattern[hour] = 0;
+        // Distribute usage across hours (simplified)
+        if (hour >= 9 && hour <= 22) {
+          pattern[hour] += totalDay / 14;
+        }
+      }
+    });
+    return pattern;
+  }, [stats]);
+
+  // Goal compliance timeline - Memoized for performance
+  const timelineData = useMemo(() => {
+    const totalGoal = goals.reduce((sum, g) => sum + g.dailyLimitMinutes, 0) || 60;
+    return stats.slice(-7).map(dayStat => ({
       date: dayStat.date,
       totalMinutes: dayStat.totalMinutes,
       goalMinutes: totalGoal,
       onTrack: dayStat.totalMinutes <= totalGoal
-    };
-  });
+    }));
+  }, [stats, goals]);
 
-  const daysOnTrack = stats.filter(s => {
+  // Compliance rate calculations - Memoized for performance
+  const complianceRate = useMemo(() => {
     const totalGoal = goals.reduce((sum, g) => sum + g.dailyLimitMinutes, 0) || 60;
-    return s.totalMinutes <= totalGoal;
-  }).length;
-  const complianceRate = stats.length > 0 ? (daysOnTrack / stats.length) * 100 : 0;
+    const onTrack = stats.filter(s => s.totalMinutes <= totalGoal).length;
+    return stats.length > 0 ? (onTrack / stats.length) * 100 : 0;
+  }, [stats, goals]);
 
   if (loading) {
     return (

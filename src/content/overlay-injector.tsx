@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import '../styles/globals.css';
 import { TimerOverlay } from '../overlays/TimerOverlay';
 import { ReminderOverlay } from '../overlays/ReminderOverlay';
 
@@ -7,6 +6,9 @@ import { ReminderOverlay } from '../overlays/ReminderOverlay';
  * Overlay Injector
  * Determines which overlay type to show and renders it
  * This is the entry point for intervention overlays injected into web pages
+ *
+ * NOTE: CSS is loaded dynamically via injectInterventionStyles() in content-script.ts
+ * to prevent polluting host pages with global styles
  */
 
 interface Props {

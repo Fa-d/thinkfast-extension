@@ -128,7 +128,8 @@ export class UsageMonitor {
   }
 
   /**
-   * Update current session (called periodically)
+   * Update current session (called periodically every minute)
+   * Calculates accurate time and passes to SessionDetector
    */
   async checkCurrentSession() {
     // Skip if monitoring is disabled
@@ -137,12 +138,18 @@ export class UsageMonitor {
     }
 
     // Don't count time when idle or browser unfocused
+    // This prevents time from accumulating when user is away
     if (!this.isUserActive || !this.isBrowserFocused) {
+      console.log('[UsageMonitor] Skipping update - user inactive or browser unfocused');
       return;
     }
 
     if (this.sessionStartTime) {
+      // Calculate total duration from session start to now
       const duration = Date.now() - this.sessionStartTime;
+      const durationMinutes = (duration / 60000).toFixed(2);
+      console.log(`[UsageMonitor] Updating session: ${durationMinutes} minutes (${this.currentUrl})`);
+
       await this.sessionDetector.updateSession(duration);
     }
   }
