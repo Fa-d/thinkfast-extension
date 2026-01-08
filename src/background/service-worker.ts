@@ -7,7 +7,7 @@ import { initializeAnalytics, AnalyticsService } from '../lib/analytics';
 
 /**
  * Background Service Worker
- * Main orchestrator for ThinkFast extension
+ * Main orchestrator for Intently extension
  * Replaces Android's UsageMonitorService
  */
 
@@ -16,7 +16,7 @@ const usageMonitor = new UsageMonitor();
 const sessionDetector = new SessionDetector();
 const interventionScheduler = new InterventionScheduler();
 
-console.log('[ServiceWorker] ThinkFast background service initialized');
+console.log('[ServiceWorker] Intently background service initialized');
 
 // ==================== Installation & Setup ====================
 
@@ -39,8 +39,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
   // Create context menu
   chrome.contextMenus.create({
-    id: 'thinkfast-snooze',
-    title: 'Snooze ThinkFast for 30 minutes',
+    id: 'intently-snooze',
+    title: 'Snooze Intently for 30 minutes',
     contexts: ['all']
   });
 });
@@ -62,7 +62,7 @@ async function initializeExtension() {
   chrome.notifications.create({
     type: 'basic',
     iconUrl: 'icons/icon128.png',
-    title: 'ThinkFast Installed!',
+    title: 'Intently Installed!',
     message: 'Start building better browsing habits with mindful interventions.'
   });
 }
@@ -351,12 +351,12 @@ async function handleMessage(message: any) {
 // ==================== Context Menu ====================
 
 chrome.contextMenus.onClicked.addListener((info) => {
-  if (info.menuItemId === 'thinkfast-snooze') {
+  if (info.menuItemId === 'intently-snooze') {
     interventionScheduler.snooze(30);
     chrome.notifications.create({
       type: 'basic',
       iconUrl: 'icons/icon128.png',
-      title: 'ThinkFast Snoozed',
+      title: 'Intently Snoozed',
       message: 'Interventions paused for 30 minutes'
     });
   }

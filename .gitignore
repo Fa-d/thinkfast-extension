@@ -42,3 +42,6 @@ coverage
 # Misc
 .cache
 .parcel-cache
+dist.pem
+dist.crx
+intently-extension.zip

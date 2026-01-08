@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ThinkFast - Mindful Browsing",
+  "name": "Intently - Intentful Browsing",
   "version": "1.0.0",
-  "description": "Build better habits by tracking website usage and providing mindful interventions",
+  "description": "Build better habits by tracking website usage and providing intentful interventions",
   "permissions": [
     "tabs",
     "storage",

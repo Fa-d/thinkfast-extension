@@ -1,11 +1,12 @@
 {
-  "name": "thinkfast-extension",
+  "name": "intently-extension",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:zip": "npm run build && cd dist && zip -r ../intently-extension.zip * && cd ..",
     "lint": "eslint .",
     "preview": "vite preview"
   },

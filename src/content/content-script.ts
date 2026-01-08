@@ -8,7 +8,7 @@ import type { Root } from 'react-dom/client';
 import { OverlayInjector } from './overlay-injector';
 import React from 'react';
 
-console.log('[ThinkFast] Content script loaded');
+console.log('[Intently] Content script loaded');
 
 let overlayRoot: Root | null = null;
 let overlayContainer: HTMLElement | null = null;
@@ -19,7 +19,7 @@ let stylesInjected = false;
  * Only called when showing an intervention to prevent polluting host pages
  *
  * APPROACH: Load the compiled theme CSS (with Tailwind) and scope ALL selectors
- * to #thinkfast-overlay-root using regex replacement to prevent pollution
+ * to #intently-overlay-root using regex replacement to prevent pollution
  */
 async function injectInterventionStyles() {
   if (stylesInjected) return; // Already injected
@@ -67,7 +67,7 @@ async function injectInterventionStyles() {
           }
         }
       } catch (error) {
-        console.warn('[ThinkFast] Could not read Vite manifest:', error);
+        console.warn('[Intently] Could not read Vite manifest:', error);
       }
     }
 
@@ -96,25 +96,25 @@ async function injectInterventionStyles() {
       // Intervention CSS might not exist, that's ok
     }
 
-    // Scope ALL selectors to #thinkfast-overlay-root
+    // Scope ALL selectors to #intently-overlay-root
     // This comprehensive regex replacement prevents ANY style pollution
     allCss = scopeCSS(allCss);
 
     // Inject into page
     const styleElement = document.createElement('style');
-    styleElement.id = 'thinkfast-intervention-styles';
+    styleElement.id = 'intently-intervention-styles';
     styleElement.textContent = allCss;
     document.head.appendChild(styleElement);
 
     stylesInjected = true;
-    console.log('[ThinkFast Content] Intervention styles injected and scoped');
+    console.log('[Intently Content] Intervention styles injected and scoped');
   } catch (error) {
-    console.error('[ThinkFast Content] Failed to inject styles:', error);
+    console.error('[Intently Content] Failed to inject styles:', error);
   }
 }
 
 /**
- * Scope all CSS selectors to #thinkfast-overlay-root
+ * Scope all CSS selectors to #intently-overlay-root
  * This prevents the CSS from affecting the host page
  */
 function scopeCSS(css: string): string {
@@ -175,28 +175,28 @@ function scopeSelector(selector: string): string {
 
   return selectors.map(sel => {
     // Already scoped?
-    if (sel.includes('#thinkfast-overlay-root')) {
+    if (sel.includes('#intently-overlay-root')) {
       return sel;
     }
 
-    // Replace :root, html, body with #thinkfast-overlay-root
+    // Replace :root, html, body with #intently-overlay-root
     if (sel === ':root' || sel === 'html' || sel === 'body' || sel === ':host' || sel === '*') {
-      return '#thinkfast-overlay-root';
+      return '#intently-overlay-root';
     }
 
     // Pseudo-class at start (e.g., :where, :is)
     if (sel.startsWith(':')) {
-      return `#thinkfast-overlay-root${sel}`;
+      return `#intently-overlay-root${sel}`;
     }
 
     // Regular selector - prepend with space
-    return `#thinkfast-overlay-root ${sel}`;
+    return `#intently-overlay-root ${sel}`;
   }).join(', ');
 }
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  console.log('[ThinkFast Content] Message received:', message.type);
+  console.log('[Intently Content] Message received:', message.type);
 
   // Respond to ping to confirm content script is ready
   if (message.type === 'PING') {
@@ -217,7 +217,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
  * Show intervention overlay on page
  */
 async function showInterventionOverlay(data: any) {
-  console.log('[ThinkFast Content] Showing intervention overlay');
+  console.log('[Intently Content] Showing intervention overlay');
 
   // Inject styles before showing overlay (only once)
   await injectInterventionStyles();
@@ -229,7 +229,7 @@ async function showInterventionOverlay(data: any) {
 
   // Create overlay container
   overlayContainer = document.createElement('div');
-  overlayContainer.id = 'thinkfast-overlay-root';
+  overlayContainer.id = 'intently-overlay-root';
   overlayContainer.style.cssText = `
     position: fixed;
     top: 0;
@@ -260,7 +260,7 @@ async function showInterventionOverlay(data: any) {
  * Remove overlay from page
  */
 function removeOverlay() {
-  console.log('[ThinkFast Content] Removing overlay');
+  console.log('[Intently Content] Removing overlay');
 
   if (overlayRoot) {
     overlayRoot.unmount();
@@ -282,14 +282,14 @@ chrome.runtime
   })
   .catch(error => {
     // Extension might not be ready yet
-    console.log('[ThinkFast Content] Could not send PAGE_LOADED:', error.message);
+    console.log('[Intently Content] Could not send PAGE_LOADED:', error.message);
   });
 
 // Listen for visibility changes (page hidden/shown)
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    console.log('[ThinkFast Content] Page hidden');
+    console.log('[Intently Content] Page hidden');
   } else {
-    console.log('[ThinkFast Content] Page shown');
+    console.log('[Intently Content] Page shown');
   }
 });

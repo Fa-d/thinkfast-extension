@@ -4,7 +4,7 @@
  */
 
 /* Ensure overlay is always on top */
-#thinkfast-overlay-root {
+#intently-overlay-root {
   all: initial;
   position: fixed !important;
   top: 0 !important;
@@ -16,6 +16,6 @@
 }
 
 /* Prevent page scrolling when overlay is shown */
-body.thinkfast-overlay-active {
+body.intently-overlay-active {
   overflow: hidden !important;
 }

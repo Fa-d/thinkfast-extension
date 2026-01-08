@@ -299,23 +299,73 @@ export const WebsiteManager: React.FC<Props> = ({ show, onClose, onSaved }) => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                          Daily Limit: {sliderValues[goal.id] ?? goal.dailyLimitMinutes} minutes
-                        </label>
+                        {/* Value Display */}
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Daily Limit
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                              {sliderValues[goal.id] ?? goal.dailyLimitMinutes}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              minutes
+                            </div>
+                          </div>
+                        </div>
 
-                        {/* Click-based time selection */}
-                        <div className="grid grid-cols-4 gap-2 mb-3">
-                          {[15, 30, 45, 60, 90, 120, 150, 180].map(minutes => (
+                        {/* Slider */}
+                        <div className="relative mb-4">
+                          {/* Track background */}
+                          <div className="absolute top-1/2 -translate-y-1/2 w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full" />
+
+                          {/* Filled track */}
+                          <div
+                            className="absolute top-1/2 -translate-y-1/2 h-3 bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 rounded-full transition-all duration-200"
+                            style={{
+                              width: `${((sliderValues[goal.id] ?? goal.dailyLimitMinutes) / 180) * 100}%`
+                            }}
+                          />
+
+                          {/* Slider input */}
+                          <input
+                            type="range"
+                            min="5"
+                            max="180"
+                            step="5"
+                            value={sliderValues[goal.id] ?? goal.dailyLimitMinutes}
+                            onChange={(e) => {
+                              const newValue = parseInt(e.target.value);
+                              setSliderValues(prev => ({ ...prev, [goal.id]: newValue }));
+                            }}
+                            onMouseUp={(e) => {
+                              const newValue = parseInt((e.target as HTMLInputElement).value);
+                              handleSliderChange(goal.id, newValue);
+                            }}
+                            onTouchEnd={(e) => {
+                              const newValue = parseInt((e.target as HTMLInputElement).value);
+                              handleSliderChange(goal.id, newValue);
+                            }}
+                            className="relative w-full h-3 bg-transparent appearance-none cursor-grab active:cursor-grabbing z-10"
+                            style={{
+                              WebkitAppearance: 'none',
+                            }}
+                          />
+                        </div>
+
+                        {/* Quick presets */}
+                        <div className="grid grid-cols-5 gap-2">
+                          {[15, 30, 60, 90, 120].map(minutes => (
                             <button
                               key={minutes}
                               onClick={() => {
                                 setSliderValues(prev => ({ ...prev, [goal.id]: minutes }));
                                 handleSliderChange(goal.id, minutes);
                               }}
-                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                              className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
                                 (sliderValues[goal.id] ?? goal.dailyLimitMinutes) === minutes
-                                  ? 'bg-blue-600 text-white shadow-md'
-                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                  ? 'bg-blue-600 text-white shadow-sm'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                               }`}
                             >
                               {minutes}m
@@ -323,30 +373,10 @@ export const WebsiteManager: React.FC<Props> = ({ show, onClose, onSaved }) => {
                           ))}
                         </div>
 
-                        {/* Fine-tune with +/- buttons */}
-                        <div className="flex items-center justify-between gap-2">
-                          <button
-                            onClick={() => {
-                              const currentValue = sliderValues[goal.id] ?? goal.dailyLimitMinutes;
-                              const newValue = Math.max(5, currentValue - 5);
-                              setSliderValues(prev => ({ ...prev, [goal.id]: newValue }));
-                              handleSliderChange(goal.id, newValue);
-                            }}
-                            className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
-                          >
-                            -5 min
-                          </button>
-                          <button
-                            onClick={() => {
-                              const currentValue = sliderValues[goal.id] ?? goal.dailyLimitMinutes;
-                              const newValue = Math.min(180, currentValue + 5);
-                              setSliderValues(prev => ({ ...prev, [goal.id]: newValue }));
-                              handleSliderChange(goal.id, newValue);
-                            }}
-                            className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
-                          >
-                            +5 min
-                          </button>
+                        {/* Range labels */}
+                        <div className="flex items-center justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+                          <span>5 min</span>
+                          <span>180 min (3h)</span>
                         </div>
                       </div>
                     </div>

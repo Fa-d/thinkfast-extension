@@ -107,7 +107,7 @@ export const Popup: React.FC = () => {
       <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            ThinkFast
+            Intently
           </h1>
           <button
             onClick={handleRefresh}
