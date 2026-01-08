@@ -177,13 +177,13 @@ We may update this policy from time to time. When we make significant changes:
 - We'll announce changes in extension release notes
 - Continued use after changes means acceptance
 
-Previous versions available at: https://github.com/Fa-d/thinkfast-extension/commits/main/PRIVACY.md
+Previous versions available at: https://github.com/Fa-d/intently-extension/commits/main/PRIVACY.md
 
 ## Open Source
 
 Intently is open source! You can review our code to verify our privacy practices:
 
-- **Repository**: https://github.com/Fa-d/thinkfast-extension
+- **Repository**: https://github.com/Fa-d/intently-extension
 - **License**: MIT License
 - **Transparency**: All data handling code is publicly auditable
 
@@ -191,8 +191,8 @@ Intently is open source! You can review our code to verify our privacy practices
 
 Questions, concerns, or requests about your privacy?
 
-- **Email**: fahad.sadakat@gmail.com
-- **GitHub Issues**: https://github.com/Fa-d/thinkfast-extension/issues
+- **Email**: contact@sadakat.dev
+- **GitHub Issues**: https://github.com/Fa-d/intently-extension/issues
 - **Response Time**: We aim to respond within 48 hours
 
 ## Data Breach Notification
@@ -231,6 +231,6 @@ This extension is provided "as is" without warranties. We are not responsible fo
 
 ---
 
-**Contact for Privacy Inquiries**: fahad.sadakat@gmail.com
+**Contact for Privacy Inquiries**: contact@sadakat.dev
 
 **Last Updated**: January 8, 2026
